@@ -57,7 +57,7 @@ When you look at examples of APRS position weather packets [here](http://wxqa.co
 - The part after the longitude "E" or "W" carries the weather data as symbols followed by numbers. - 3316.04N/09631.96W
 - The underscore "_" followed by 3 numbers represents wind direction in degrees from true north. This is the direction that the wind is blowing from. - _120
 - The slash "/" followed by 3 numbers represents the average wind speed in miles per hour. - /005
-- The letter "g" followed by 3 numbers represents the peak instaneous value of wind in miles per hour. - g010
+- The letter "g" followed by 3 numbers represents the peak instantaneous value of wind in miles per hour. - g010
 - The letter "t" followed by 3 characters (numbers and minus sign) represents the temperature in degrees F. - t021
 - The letter "r" followed by 3 numbers represents the amount of rain in hundredths of inches that fell the past hour. - r000
 - The letter "p" followed by 3 numbers represents the amount of rain in hundredths of inches that fell in the past 24 hours. Only these two precipitation values are accepted by MADIS. - p000
