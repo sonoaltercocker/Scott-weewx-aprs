@@ -1,3 +1,7 @@
+# updated with CLAUDE and by Scott Sheppard
+# email ssheppa9@bellsouth.net
+# July 2026
+
 from datetime import datetime
 import os
 
@@ -124,7 +128,7 @@ class APRS(weewx.engine.StdService):
             except Exception as e:
                 logging.error("weewx-aprs-packet-formatter - rainRate - %s %s %s"% (e, record['rainRate'] * 100))
 
-        if record.get('daily_rain') is not None:
+        if record.get('dayRain') is not None:
             # Rainfall (in hundredths of an inch) since midnight
             try: 
                 data.append('P%03.f' % (record['dayRain'] * 100))
@@ -162,8 +166,30 @@ class APRS(weewx.engine.StdService):
                 except Exception as e:
                     logging.error("weewx-aprs-packet-formatter - luminosity - %s" % (e))
 
+        # BGT and WBGT (Black Globe Temperature / Wet Bulb Globe Temperature)
+        # have no defined field in the APRS weather-report spec, so they
+        # cannot be sent as parsed weather data (e.g. a 't' field would be
+        # read by parsers as a second, conflicting temperature reading).
+        # Instead, append them as free-text in the comment area, where
+        # APRS parsers stop looking for weather fields.
+        comment_parts = []
+        if record.get('bgt') is not None:
+            try:
+                comment_parts.append('BGT=%03.fF' % record['bgt'])
+            except Exception as e:
+                logging.error("weewx-aprs-packet-formatter - bgt - %s" % (e))
+
+        if record.get('wbgt') is not None:
+            try:
+                comment_parts.append('WBGT=%03.fF' % record['wbgt'])
+            except Exception as e:
+                logging.error("weewx-aprs-packet-formatter - wbgt - %s" % (e))
+
         if self._comment:
-            data.append(self._comment)
+            comment_parts.append(self._comment)
+
+        if comment_parts:
+            data.append(' ' + ' '.join(comment_parts))
 
         wxdata = ''.join(data)
 
