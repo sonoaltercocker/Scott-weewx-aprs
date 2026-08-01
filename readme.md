@@ -1,4 +1,7 @@
-# this is edited as a test by SKS 
+# tEdited by Scott Sheppard 
+# ssheppa9@bellsouth.net
+# this has been edited to support EcoWitt WN 38 senors values for WBT and WBGT
+# These values will be appened to teh APRS packet as a comment in deg F. 
 
 # aprs - weewx extension for generating APRS-compliant packets
 ![alt text](img/aprs.png)![alt text](img/handshake.png)  ![alt text](img/weewx.jpg)  
@@ -11,7 +14,7 @@ StdArchive.archive_interval seconds.
 ### This is intended to work with the latest weeWX version
 
 # Installation:
-> weectl extension install https://github.com/savagebread/weewx-aprs/archive/refs/tags/v0.2.zip
+> weectl extension install https://github.com/sonoaltercocker/Scott-weewx-aprs/archive/refs/tags/0.1-1.zip
 
 # Configuration [WeeWX]: 
 #### Add these to your weewx.conf - likely in /etc/weewx/
@@ -48,12 +51,12 @@ syncronized, so aprx may send out the same packet twice or miss one from time
 to time.
 
 ### When all is said and done, the packet should look something like this.
-![alt text](/img/image.png)
+# WD5EMA-3>APRS,W4BOC-1,WIDE1*:/012230z3349.92N/08416.09W_171/001g004t086r000h68b09735 BGT=089F WBGT=081F
+# ave wind speed 1 mph, gust 4 miles/h,temp 86 deg F, rain 0 inches in last 24 hours, 68% humidity,  pressure 973.5 hPa
 
 # How is the weather data coded into the data packet?  
 
 When you look at examples of APRS position weather packets [here](http://wxqa.com/callsminmax/index_callsminmax.html), or [here](http://wxqa.com/activecwd/index_activecwd.html), the part after the longitude "E" or "W" carries the weather data as symbols followed by numbers.   
-
 
 @060151z3316.04<b>N</b>/09631.96<b>W</b><b>_</b>120<b>/</b>005<b>g</b>010<b>t</b>021<b>r</b>000<b>p</b>000<b>P</b>000<b>h</b>75<b>b</b>10322
 - The part after the longitude "E" or "W" carries the weather data as symbols followed by numbers. - 3316.04N/09631.96W
