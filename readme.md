@@ -1,5 +1,5 @@
-# Edited by Scott Sheppard 
-# ssheppa9@bellsouth.net
+
+# Edited by Scott Sheppard ssheppa9@bellsouth.net
 # This has been edited to support EcoWitt WN 38 sensor values for WBT and WBGT
 # These values will be appended to APRS packets as a comment in deg F. 
 
@@ -46,10 +46,6 @@ StdArchive.archive_interval seconds.
             beacon srccall N0CALL-1 via WIDE2-1 file "/dev/shm/aprs.pkt"
             </beacon>
 
-Note: This configuration has the problem that aprx and weewx are not
-syncronized, so aprx may send out the same packet twice or miss one from time
-to time.
-
 ### When all is said and done, the packet should look something like this.
 # WD5EMA-3>APRS,W4BOC-1,WIDE1*:/012230z3349.92N/08416.09W_171/001g004t086r000h68b09735 BGT=089F WBGT=081F
 # ave wind speed 1 mph, gust 4 miles/h,temp 86 deg F, rain 0 inches in last 24 hours, 68% humidity,  pressure 973.5 hPa
@@ -75,7 +71,8 @@ When you look at examples of APRS position weather packets [here](http://wxqa.co
 The first four fields (wind direction, wind speed, temperature and gust) are required, in that order, and if a particular measurement is not present, the three numbers should be replaced by "..." to indicate no data available. [Solar radiation data](http://wxqa.com/lum_search.htm) can also be coded into the data packet.
 
 # Tested on:
-GW1000/GW1100 Tested by Sheppard on WS3900 July 2026
+GW1000/GW1100 (I think these are discontinued) 
+Tested by Sheppard on WS3900 July 2026. Next planned test on GW 1200. 
 
 # Troubleshooting
 > ****  ModuleNotFoundError: No module named 'user.aprs'  
