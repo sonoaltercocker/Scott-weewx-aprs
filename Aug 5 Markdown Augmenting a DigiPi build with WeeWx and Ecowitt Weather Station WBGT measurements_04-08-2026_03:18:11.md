@@ -98,7 +98,7 @@ Ecowitt calculates Wet Bulb Globe Temperature (WBGT) using standard outdoor sola
 
 Heat Stress caution chart is a good reference and when planning outdoor activities this is a good reference. 
 
-![WBGT heat chart](image-1.png)
+![WBGT heat chart](img/image-1.png)
 
 # Weather Station
 
@@ -126,11 +126,11 @@ In the case of Sheppard’s home all measures are about 25 feet above ground exc
 
 WN 38 Black Globe Thermometer, Wet globe Temperature
 
-![WN 38 Black Globe Thermometer](image-4.png)
+![WN 38 Black Globe Thermometer](img/image-4.png)
 
 WN 32 Outdoor temperature and humidity sensor. 
 
-![Temperatur and humidity sensor](image-3.png)
+![Temperatur and humidity sensor](img/image-3.png)
 
 This equipment can be mounted on a pole or mast with an adapter for the WN32 – ($28.81 with shipping)
 
@@ -151,11 +151,11 @@ To obtain WBGT results from Ecowitt you need the hardware listed above.  The res
 
 Example display of WBGT from the local Ecowitt app (on a mac). Remember the actual value of WBGT is LESS than external temperature. 
 
-![Ecowitt app display](image-6.png)
+![Ecowitt app display](img/image-6.png)
 
 Example display of WBGT from the web on Ecowitt.net. Remember the actual value of WBGT is LESS than external temperature.
 
-![Ecowitt.net](image-5.png)
+![Ecowitt.net](img/image-5.png)
 
 Note: Taken during a rain storm.
 
@@ -242,7 +242,7 @@ After setting the WiFI on the author’s  MAC to the WI FI SSID of the WS 3900 c
 
 Where 192.168.1.180 is the IP the Raspberry Pi 4 and the sending port (reading port) is 9000.Configure teh weather station (WS) or console to push data to your Raspberry Pi. 
 
-    ![ configure output to weewx]](image-8.png)
+    ![ configure output to weewx]](img/image-8.png)
 
 When finished return the Wi Fi SSID for the home or Digipi station
 
@@ -665,11 +665,11 @@ It is possible to add email addresses or distribution lists to Ecowitt.net so th
 
 Search for WD5EMA-3 on aprs.fi .
 
-![APRS.FI WD5EMA-3](image-9.png)
+![APRS.FI WD5EMA-3](img/image-9.png)
 
 Since the DigiPi is to be configured as a digipeater as well, there should be an entry for your call sign followed by -2. In this case, that would be KJ4ZZB-2 .
 
-![APRS.FI KJ4ZZB-2](image-10.png)
+![APRS.FI KJ4ZZB-2](img/image-10.png)
 
 
 
@@ -705,8 +705,7 @@ When the DigiPi APRS Igate selection is active, the TNC daemon is active.
 
 Digipi Ver 2.1-3 Maps function is working correctly. Note the author’s station KJ4ZZB-2 or WD5EMA-3
 
-![Digipi Maps Result](image-11.png)
-
+![Digipi Maps Result](img/image-11.png)
 
 ## Appendix : Correct /home/pi/localize.env after initialization if there are mistakes. 
 
@@ -931,11 +930,11 @@ root@digipi:/etc/weewx/bin/user# weectl extension install https://github.com/sav
 
 This repo contains
 
-![master contents](image-14.png)
+![master contents](img/image-14.png)
 
 Where BIN/USER has the program we are interested in
 
-![/bin/user](image-13.png)
+![/bin/user](img/image-13.png)
 
 ## Appendix : Setting up git and cloning a repo 
 
