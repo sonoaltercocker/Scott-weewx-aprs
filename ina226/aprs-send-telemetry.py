@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """
 aprs-send-telemetry.py - send battery status as APRS telemetry
-Version 1.2 - 2026-10-27
+Version 1.3 - 2026-10-28
 
 Changes:
+  1.3  Clear message (no traceback) when Direwolf isn't running
   1.2  One-line-per-send log in /dev/shm/aprs-send.log (last 200 lines)
   1.1  RF-first: definitions go over RF; APRS-IS only when the internet is up
   1.0  First release
@@ -42,7 +43,7 @@ import time
 
 # ------------------------------------------------------------------ settings
 WEATHER_SCRIPT = "/usr/local/bin/aprs-send-weather.sh"   # source of USER / PASS
-USER = None              # set here to override, e.g. "WD5EMA-3"
+USER = None              # set here to override, e.g. "N0CALL-3"
 PASS = None              # set here to override
 
 STATUS_FILE = "/dev/shm/battery_now.json"
@@ -55,6 +56,7 @@ APRSIS_PORT = 14580
 SEND_APRSIS = "auto"     # "auto" = use APRS-IS only if the internet is reachable,
                          # True = always try, False = never (RF-only station)
 DIREWOLF_HOST = "localhost"
+DIREWOLF_KISS_PORT = 8001  # Direwolf's default KISS TCP port (kissutil uses it)
 RF_PATH = "WIDE1-1"
 SEND_RF = True           # telemetry data over RF
 DEFS_RF = True           # definitions over RF too - REQUIRED when the station has
@@ -74,7 +76,7 @@ CHANNELS = [
 BITS = [("Chrg", "on"), ("Low", "on"), ("Fault", "on"), ("Full", "on")]
 LOW_SOC = 20.0
 FULL_SOC = 99.5
-VERSION = "1.2"
+VERSION = "1.3"
 
 
 # ------------------------------------------------------------------ helpers
@@ -189,16 +191,39 @@ def internet_up():
         return False
 
 
+def direwolf_up():
+    """Is Direwolf's KISS TCP port accepting connections?"""
+    try:
+        socket.create_connection((DIREWOLF_HOST, DIREWOLF_KISS_PORT), timeout=3).close()
+        return True
+    except OSError:
+        return False
+
+
 def send_rf(user, infos):
+    if not direwolf_up():
+        raise OSError(f"Direwolf not running (no KISS port {DIREWOLF_KISS_PORT} on {DIREWOLF_HOST})")
     proc = subprocess.Popen(["kissutil", "-h", DIREWOLF_HOST], stdin=subprocess.PIPE,
                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, text=True)
-    time.sleep(5)                                        # let kissutil connect
-    for i in infos:
-        proc.stdin.write(f"{user}>APRS,{RF_PATH}:{i}\n")
-        proc.stdin.flush()
-        time.sleep(2)                                    # space packets on the channel
-    proc.stdin.close()
-    proc.wait(timeout=30)
+    try:
+        time.sleep(5)                                    # let kissutil connect
+        if proc.poll() is not None:
+            raise OSError("kissutil exited early - could not connect to Direwolf")
+        for i in infos:
+            proc.stdin.write(f"{user}>APRS,{RF_PATH}:{i}\n")
+            proc.stdin.flush()
+            time.sleep(2)                                # space packets on the channel
+    except BrokenPipeError:
+        raise OSError("kissutil closed the connection - is Direwolf running?")
+    finally:
+        try:
+            proc.stdin.close()
+        except OSError:
+            pass
+        try:
+            proc.wait(timeout=30)
+        except subprocess.TimeoutExpired:
+            proc.kill()
 
 
 # ------------------------------------------------------------------ main
