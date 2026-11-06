@@ -1,0 +1,17 @@
+# /etc/systemd/system/digipi-gps-position.service
+# Version 1.3  -  Scott Sheppard, KJ4ZZB
+# Updates DigiPi's station position from the GPS at every boot.
+# Type=simple so a slow or missing GPS fix never holds up the rest of boot.
+
+[Unit]
+Description=DigiPi - update station position from GPS
+Wants=gpsd.service
+After=gpsd.service network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /usr/local/bin/digipi-gps-position.py
+Restart=no
+
+[Install]
+WantedBy=multi-user.target
