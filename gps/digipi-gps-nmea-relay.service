@@ -1,0 +1,19 @@
+# /etc/systemd/system/digipi-gps-nmea-relay.service
+# Version 1.6  -  Scott Sheppard, KJ4ZZB (relay based on work by Scott Curie, NS7C)
+# GPS data as NMEA on TCP port 2948, for Winlink Express on the LAN.
+# Installed but off; turn on with: sudo digipi-gps-position.py --enable lan-nmea
+
+[Unit]
+Description=DigiPi - GPS NMEA feed for the LAN (port 2948)
+Wants=gpsd.service
+After=network.target gpsd.service gpsd.socket
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /usr/local/bin/digipi-gps-nmea-relay.py
+User=pi
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
