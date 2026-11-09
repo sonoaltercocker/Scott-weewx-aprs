@@ -5,6 +5,7 @@ When a DigiPi installation is performed, it is assumed the Raspberry Pi will not
 **Version:** 1.6 — see `CHANGELOG.md` for what changed in each version, and why.
 
 **Works on:** any Raspberry Pi running DigiPi, with a GPS receiver that DigiPi's `gpsd` can read.
+
 **WeeWX:** optional. With WeeWX installed its position is kept up to date as well; without it, only DigiPi is updated. The same files work either way.
 
 ---
@@ -256,18 +257,18 @@ To check the port from Windows PowerShell, `Test-NetConnection <pi-address> -Por
    - `"result": "no fix"`: the GPS did not lock at boot; the watcher keeps trying.
    - **No file yet:** the service is still waiting for a fix.
 
-4. **Look at the history again.** A new `updated` line shows the new position, grid square and altitude, and how far the station moved and from where:
+4. **Look at the history again.** A new `updated` line shows the new position and grid square, and how far the station moved and from where:
 
    ```
    2026-11-06 14:05  installed  33.7748, -84.2963  EM73us  WeeWX 33.7748, -84.2963  (version 1.6)
-   2026-11-08 09:12  updated    33.8320, -84.2682  EM73ut  275 m  moved 6870 m from 33.7748, -84.2963 EM73us
+   2026-11-08 09:12  updated    33.8320, -84.2682  EM73ut  moved 6870 m from 33.7748, -84.2963 EM73us
    ```
 
    To see the values in the config files themselves:
 
    ```bash
    grep -E "^NEW(LAT|LON|GRID)" /home/pi/localize.env
-   grep -A4 "^\[Station\]" /etc/weewx/weewx.conf
+   sed -n '/^\[Station\]/,/^\[/p' /etc/weewx/weewx.conf | grep -E "latitude|longitude|altitude"
    ```
 
    The second command is only for stations with WeeWX. On a pip install of WeeWX the file is `/home/pi/weewx-data/weewx.conf`. You can also watch your next beacon on [aprs.fi](https://aprs.fi).
@@ -289,7 +290,7 @@ journalctl -u digipi-gps-position -b
 ```
 digipi-gps-position 1.6
 Waiting up to 600 s for a GPS fix ...
-GPS position 33.832000, -84.268200, 275 m
+GPS position 33.832000, -84.268200
 DigiPi position 33.7748, -84.2963 (EM73us); 6870 m from GPS
 WeeWX position 33.7748, -84.2963; 6870 m from GPS
 Stopping tnc
@@ -297,7 +298,7 @@ Stopping tnc
   ...
 WeeWX found (/etc/weewx/weewx.conf); updating its [Station] position.
   updated /etc/weewx/weewx.conf
-History: updated    33.8320, -84.2682  EM73ut  275 m  moved 6870 m from 33.7748, -84.2963 EM73us
+History: updated    33.8320, -84.2682  EM73ut  moved 6870 m from 33.7748, -84.2963 EM73us
 Position set to 33.8320, -84.2682 (EM73ut); 13 file(s) updated.
 Starting tnc
 Restarting weewx
@@ -319,7 +320,7 @@ cat /home/pi/gps-position-history.txt
 | Line starts with | Meaning |
 |---|---|
 | `installed` | The position DigiPi (and WeeWX) had when the add-on was installed or upgraded |
-| `updated … moved … from …` | The station moved; the new position, grid square, altitude, and the old position |
+| `updated … moved … from …` | The station moved; the new position, grid square (and altitude, if `update-altitude` is on), and the old position |
 | `updated … WeeWX position corrected from …` | DigiPi was right, but WeeWX had a different position, which was put right |
 | `… (settled after a move)` | The watcher updated after the station was parked at a new place, without a reboot |
 | `… (at RMS start)` | The update was made when RMS gateway mode started |
