@@ -31,9 +31,15 @@
 # Scott Sheppard, KJ4ZZB
 # https://github.com/sonoaltercocker/Scott-weewx-aprs
 #
-# Version 2.1 - 2026-11-11
+# Version 2.2 - 2026-11-14
 #
 # Changes:
+#   2.2  2026-11-14  battery-check.py installed with the battery monitor:
+#                    one-command power system check (monitor, 5 V supply,
+#                    last 24 h of the battery log). Shown in the Next steps.
+#                    Callsign for weather and telemetry has no default on a
+#                    new station (it was the DigiPi callsign with -3, easy to
+#                    accept by mistake). Send log shows the whole packet.
 #   2.1  2026-11-11  Boot report and saved journal on /data (BOOT_REPORT).
 #                    A companion file already in place (for example
 #                    battery_monitor.py when the script runs from the pi
@@ -42,7 +48,7 @@
 #                    Backup over SSH shown at the end.
 #   2.0  2026-11-09  First release of the single-script build.
 #
-SCRIPT_VERSION="2.1"
+SCRIPT_VERSION="2.2"
 
 ###########################################################################
 # Fixed settings (the per-station answers are asked for when it runs)
@@ -168,8 +174,9 @@ ask_settings() {
     echo
     echo "   Station details. Press Enter to accept the value in [brackets]."
     echo
-    ask CALLSIGN "APRS callsign-SSID for weather and telemetry" \
-        "${CALLSIGN:-${base:+$base-3}}" '^[A-Za-z0-9]{3,7}-[0-9]{1,2}$' "callsign-SSID, for example WD5EMA-3"
+    [ -z "$CALLSIGN" ] && note "DigiPi's own beacon uses ${base:-its Initialize callsign}; weather and telemetry may use a different callsign"
+    ask CALLSIGN "APRS callsign-SSID for weather and telemetry (for example WD5EMA-3)" \
+        "${CALLSIGN}" '^[A-Za-z0-9]{3,7}-[0-9]{1,2}$' "callsign-SSID with a hyphen, for example WD5EMA-3"
     CALLSIGN="${CALLSIGN^^}"
     ask STATION_LOCATION "Station name (shown by WeeWX)" "${STATION_LOCATION:-$CALLSIGN weather}" '.+'
     ask LATITUDE  "Latitude, decimal degrees (south is minus)" \
@@ -870,6 +877,9 @@ EOF
     if [ "$INA_FOUND" = yes ]; then ok "INA226 found at 0x40 on I2C bus 3"
     else warn "INA226 not seen on I2C bus 3 - check the wiring (pins 16, 17, 18, 20)"; fi
     ok "battery.service ($BATTERY_AH Ah)"
+    fetch ina226/battery-check.py /usr/local/bin/battery-check.py
+    chmod 755 /usr/local/bin/battery-check.py
+    ok "battery-check.py (power system check)"
 fi
 
 ###########################################################################
@@ -953,7 +963,7 @@ else
     RF_STATUS="failed"
 fi
 
-log "APRS-IS: $(printf '%-12s' "$IS_STATUS")  RF: $(printf '%-7s' "$RF_STATUS")  ${STRING:0:60}"
+log "APRS-IS: $(printf '%-12s' "$IS_STATUS")  RF: $(printf '%-7s' "$RF_STATUS")  ${STRING:0:100}"
 
 [ "$RF_STATUS" = "sent" ] || [ "$IS_STATUS" = "sent" ]
 exit $?
@@ -1212,6 +1222,12 @@ if [ ${#WARNINGS[@]} -gt 0 ]; then
     printf '   - %s\n' "${WARNINGS[@]}"
     echo
 fi
+POWER_STEP=""
+[ "$INSTALL_BATTERY" = yes ] && POWER_STEP="
+  6. Power check: after the station has run 24 hours where it will be
+     deployed (on its own battery, charger or solar), on the Pi:
+         battery-check.py
+     Every check should read PASS."
 cat <<EOF
 ${c_hd}Build finished.${c_off}  Log: $LOG
 
@@ -1232,5 +1248,5 @@ Next:
          sudo mount -o remount,ro /boot/firmware; sudo systemctl stop battery; sudo journalctl --sync
      then on the Mac (not near 00:17, 06:17, 12:17 or 18:17, when WeeWX saves to /data):
          caffeinate -i ssh $PI_USER@${PI_ADDR:-<Pi address>} 'sudo dd if=$DISK bs=1M count=$IMG_MB status=progress | gzip -1' > ~/${CALLSIGN}-$(date +%F).img.gz
-     and afterwards on the Pi:   sudo systemctl start battery
+     and afterwards on the Pi:   sudo systemctl start battery$POWER_STEP
 EOF
