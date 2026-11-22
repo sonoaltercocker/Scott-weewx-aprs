@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
 """
 LiFePO4 battery monitor for Raspberry Pi + INA226.
-Version 1.7 - 2026-11-15
+Version 1.8 - 2026-11-22
 
 Changes:
+  1.8  Low-battery shutdown now goes by voltage only. A wrong SoC (for
+       example after charging while the Pi was off) can no longer shut down
+       a full battery. At startup the saved charge is checked against the
+       battery voltage and corrected if they disagree by RESYNC_GAP_PCT or
+       more, so the counter can't stay stuck near 0% on a full battery.
   1.7  Saves state and log in /data/battery automatically when that folder
        exists (station build), so a fresh download keeps using it. The
        "empty" reset now needs the low voltage to last EMPTY_HOLD_S, so a
@@ -34,7 +39,7 @@ from datetime import datetime
 
 from smbus2 import SMBus
 
-VERSION = "1.7"
+VERSION = "1.8"
 
 # ------------------------------------------------------------------ settings
 I2C_BUS = 3             # software I2C bus on GPIO 23/24 (pins 16/18); RTC stays on bus 1
@@ -55,11 +60,18 @@ FULL_HOLD_S = 120       # ...for this many seconds -> battery is 100%
 EMPTY_V = 11.5          # below this under load...
 EMPTY_HOLD_S = 60       # ...for this long -> battery is essentially empty (ignores TX dips)
 
-# Safe shutdown of the Pi before the battery BMS cuts power (protects SD card)
+# Safe shutdown of the Pi before the battery BMS cuts power (protects SD card).
+# Goes by voltage only: SoC is an estimate and can be wrong, voltage is measured.
 SHUTDOWN_ENABLED = True
-SHUTDOWN_SOC = 5.0      # percent
-SHUTDOWN_V = 12.0       # or below this voltage while discharging
-SHUTDOWN_HOLD_S = 60    # condition must last this long (ignores TX dips)
+SHUTDOWN_V = 12.0       # below this voltage while discharging...
+SHUTDOWN_HOLD_S = 60    # ...for this long (ignores TX dips) -> shut down
+
+# Startup check: compare the saved charge with the battery voltage. The counter
+# only runs while the Pi is on, so charge that goes in while it is off is missed.
+RESYNC_ENABLED = True
+RESYNC_GAP_PCT = 25.0   # correct the saved SoC if it differs from the voltage estimate by this much
+RESYNC_MAX_A = 1.0      # skip the check if the current is bigger than this (heavy charging or TX)
+STARTUP_SAMPLES = 5     # readings averaged (median) for the check, about 1 s apart
 SANE_MIN_V = 9.0        # readings below this mean a wiring fault, not a flat battery
 
 RETRY_S = 2.0           # seconds between retries when the sensor stops answering
@@ -75,7 +87,7 @@ FALLBACK_DIR = "/tmp"   # used if home is read-only (DigiPi); /tmp is cleared on
 STATUS_FILE = "/dev/shm/battery_now.json"   # latest reading, for APRS telemetry
 
 # Resting (no load, no charge, settled 1 h+) voltage -> SoC for a 4S LiFePO4.
-# Only used for a first guess when there is no saved state.
+# Used for a first guess when there is no saved state, and for the startup check.
 REST_TABLE = [
     (10.00, 0), (12.00, 2), (12.50, 5), (12.80, 10), (12.90, 15),
     (13.00, 20), (13.05, 30), (13.10, 40), (13.15, 50), (13.20, 60),
@@ -240,14 +252,58 @@ def connect(bus):
             time.sleep(RETRY_S)
 
 
+def startup_reading(bus):
+    """Median of a few readings, so one radio transmit can't skew the startup check."""
+    vs, as_ = [], []
+    for _ in range(STARTUP_SAMPLES):
+        try:
+            v, a = read_ina226(bus)
+            vs.append(v)
+            as_.append(a)
+        except OSError:
+            pass
+        time.sleep(1.0)
+    if not vs:
+        return None, None
+    vs.sort()
+    as_.sort()
+    return vs[len(vs) // 2], as_[len(as_) // 2]
+
+
+def check_resync(ah, volts, amps):
+    """Correct a saved charge level that the battery voltage clearly contradicts."""
+    if not RESYNC_ENABLED or volts is None:
+        return ah
+    if volts < SANE_MIN_V:
+        print(f"Startup check skipped: {volts:.2f} V looks like a wiring fault", flush=True)
+        return ah
+    if abs(amps) > RESYNC_MAX_A:
+        print(f"Startup check skipped: current {amps:+.2f} A too high to judge "
+              "charge from voltage", flush=True)
+        return ah
+    saved_soc = 100.0 * ah / CAPACITY_AH
+    est = soc_from_rest_voltage(volts)
+    if abs(est - saved_soc) >= RESYNC_GAP_PCT:
+        print(f"Startup check: saved {saved_soc:.0f}% but {volts:.2f} V means about "
+              f"{est:.0f}% - using {est:.0f}%", flush=True)
+        return CAPACITY_AH * est / 100.0
+    print(f"Startup check: saved {saved_soc:.0f}% agrees with {volts:.2f} V "
+          f"(about {est:.0f}%)", flush=True)
+    return ah
+
+
 # ------------------------------------------------------------------ main
 def main():
     print(f"Battery monitor v{VERSION}  (INA226 0x{ADDR:02X} on I2C bus {I2C_BUS})", flush=True)
     pick_files()
     with SMBus(I2C_BUS) as bus:
         connect(bus)                      # waits until the sensor answers
-        volts, amps = read_ina226(bus)
+        volts, amps = startup_reading(bus)
+        if volts is None:
+            volts, amps = read_ina226(bus)
         ah = load_state(volts)
+        ah = check_resync(ah, volts, amps)
+        save_state(ah)
 
         last = time.monotonic()
         last_log = last_save = 0.0
@@ -330,7 +386,7 @@ def main():
                 print(f"WARNING: {volts:.2f} V is not a real battery voltage - "
                       "check battery/VBUS wiring. Shutdown check skipped.", flush=True)
                 low_since = None
-            elif SHUTDOWN_ENABLED and amps < 0 and (soc <= SHUTDOWN_SOC or volts <= SHUTDOWN_V):
+            elif SHUTDOWN_ENABLED and amps < 0 and volts <= SHUTDOWN_V:
                 low_since = low_since or now
                 if now - low_since >= SHUTDOWN_HOLD_S:
                     print("LOW BATTERY - shutting down Pi", flush=True)
