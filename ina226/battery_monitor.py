@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
 """
 LiFePO4 battery monitor for Raspberry Pi + INA226.
-Version 1.8 - 2026-11-22
+Version 1.9 - 2026-11-22
 
 Changes:
+  1.9  Startup check only overrules the saved charge where the voltage is
+       clear: at or above RESYNC_HIGH_V (battery high) or at or below
+       RESYNC_LOW_V (battery low). In LiFePO4's flat middle zone the voltage
+       can't tell 30% from 90%, so the saved charge is kept.
   1.8  Low-battery shutdown now goes by voltage only. A wrong SoC (for
        example after charging while the Pi was off) can no longer shut down
        a full battery. At startup the saved charge is checked against the
@@ -39,7 +43,7 @@ from datetime import datetime
 
 from smbus2 import SMBus
 
-VERSION = "1.8"
+VERSION = "1.9"
 
 # ------------------------------------------------------------------ settings
 I2C_BUS = 3             # software I2C bus on GPIO 23/24 (pins 16/18); RTC stays on bus 1
@@ -71,6 +75,9 @@ SHUTDOWN_HOLD_S = 60    # ...for this long (ignores TX dips) -> shut down
 RESYNC_ENABLED = True
 RESYNC_GAP_PCT = 25.0   # correct the saved SoC if it differs from the voltage estimate by this much
 RESYNC_MAX_A = 1.0      # skip the check if the current is bigger than this (heavy charging or TX)
+RESYNC_HIGH_V = 13.30   # at or above this the battery is clearly high: a saved SoC far too low is raised
+RESYNC_LOW_V = 13.05    # at or below this the battery is clearly low: a saved SoC far too high is lowered
+                        # between the two (LiFePO4 flat zone) the saved charge is always kept
 STARTUP_SAMPLES = 5     # readings averaged (median) for the check, about 1 s apart
 SANE_MIN_V = 9.0        # readings below this mean a wiring fault, not a flat battery
 
@@ -283,7 +290,13 @@ def check_resync(ah, volts, amps):
         return ah
     saved_soc = 100.0 * ah / CAPACITY_AH
     est = soc_from_rest_voltage(volts)
-    if abs(est - saved_soc) >= RESYNC_GAP_PCT:
+    if RESYNC_LOW_V < volts < RESYNC_HIGH_V:
+        print(f"Startup check: {volts:.2f} V is in the flat zone - keeping saved "
+              f"{saved_soc:.0f}%", flush=True)
+        return ah
+    too_low = volts >= RESYNC_HIGH_V and est - saved_soc >= RESYNC_GAP_PCT
+    too_high = volts <= RESYNC_LOW_V and saved_soc - est >= RESYNC_GAP_PCT
+    if too_low or too_high:
         print(f"Startup check: saved {saved_soc:.0f}% but {volts:.2f} V means about "
               f"{est:.0f}% - using {est:.0f}%", flush=True)
         return CAPACITY_AH * est / 100.0
